@@ -10,6 +10,7 @@
     "truffle-core": "^3.4.11"
   },
   "scripts": {
+    "testrpc": "testrpc -i 88 -p 8888",
     "test": "truffle test"
   },
   "babel": {

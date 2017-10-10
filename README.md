@@ -8,14 +8,9 @@ Install dependencies:
 npm i
 ```
 
-Install testrpc:
-```
-npm -g i ethereumjs-testrpc
-```
-
 Run testrpc:
 ```
-testrpc
+npm run testrpc
 ```
 
 While testrpc is running, run tests:
