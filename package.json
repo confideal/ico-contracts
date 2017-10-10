@@ -12,10 +12,5 @@
   "scripts": {
     "testrpc": "testrpc -i 88 -p 8888",
     "test": "truffle test"
-  },
-  "babel": {
-    "presets": [
-      "react-app"
-    ]
   }
 }
