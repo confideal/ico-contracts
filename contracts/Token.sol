@@ -1,4 +1,4 @@
-pragma solidity ^0.4.11;
+pragma solidity 0.4.15;
 
 
 import "zeppelin-solidity/contracts/token/MintableToken.sol";
@@ -37,8 +37,8 @@ contract Token is MintableToken, NoOwner {
         decimals = _decimals;
         timeMode = TimeMode(_timeMode);
 
-        // Issue tokens to the recipients
-        for (uint256 i = 0; i < _recipients.length; i ++) {
+        // Mint pre-distributed tokens
+        for (uint256 i = 0; i < _recipients.length; i++) {
             mint(_recipients[i], _amounts[i]);
             if (_releaseTimes[i] > 0) {
                 releaseTimes[_recipients[i]] = _releaseTimes[i];
@@ -47,28 +47,41 @@ contract Token is MintableToken, NoOwner {
     }
 
     function transfer(address _to, uint256 _value)
+    public
     returns (bool)
     {
+        // Transfer is forbidden until minting is finished
         require(mintingFinished);
+
+        // Transfer of time-locked funds is forbidden
         require(!timeLocked(msg.sender));
+
         return super.transfer(_to, _value);
     }
 
     function transferFrom(address _from, address _to, uint256 _value)
+    public
     returns (bool)
     {
+        // Transfer is forbidden until minting is finished
         require(mintingFinished);
+
+        // Transfer of time-locked funds is forbidden
         require(!timeLocked(_from));
+
         return super.transferFrom(_from, _to, _value);
     }
 
+    // Checks if funds of a given address are time-locked
     function timeLocked(address _spender)
+    public
     returns (bool)
     {
         if (releaseTimes[_spender] == 0) {
             return false;
         }
 
+        // If time-lock is expired, delete it
         var _time = timeMode == TimeMode.Timestamp ? block.timestamp : block.number;
         if (releaseTimes[_spender] <= _time) {
             delete releaseTimes[_spender];
