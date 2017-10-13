@@ -31,7 +31,9 @@ contract Token is MintableToken, NoOwner {
         uint256[] _amounts,
         uint256[] _releaseTimes,
         uint8 _timeMode
-    ) {
+    )
+    public
+    {
         require(_recipients.length == _amounts.length);
         require(_recipients.length == _releaseTimes.length);
 

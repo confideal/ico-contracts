@@ -121,7 +121,9 @@ contract Campaign is Claimable, HasNoTokens, ReentrancyGuard {
         string _name,
         string _website,
         bytes32 _whitePaperHash
-    ) {
+    )
+    public
+    {
         id = _id;
         beneficiary = _beneficiary;
         name = _name;
