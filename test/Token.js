@@ -29,6 +29,34 @@ contract('Token', function (accounts) {
         ]));
     });
 
+    it('should require the distribution recipient and amount arrays to have equal lengths', function () {
+        return Token.new(
+            'Confideal Token',
+            'CDL',
+            18,
+            [accounts[0], accounts[1]],
+            [1, 2, 3],
+            [1, 2],
+            TIME_MODE_BLOCK
+        )
+            .then(() => Promise.reject('This call should fail'))
+            .catch(error => assert.notEqual(error.toString(), 'This call should fail'));
+    });
+
+    it('should require the distribution recipient and release time arrays to have equal lengths', function () {
+        return Token.new(
+            'Confideal Token',
+            'CDL',
+            18,
+            [accounts[0], accounts[1]],
+            [1, 2],
+            [1, 2, 3],
+            TIME_MODE_BLOCK
+        )
+            .then(() => Promise.reject('This call should fail'))
+            .catch(error => assert.notEqual(error.toString(), 'This call should fail'));
+    });
+
     it('shouldn’t allow transfers while minting', () => {
         return createToken().then(token => Promise.all([
             token.mintingFinished.call().then(mintingFinished => assert.equal(mintingFinished, false)),

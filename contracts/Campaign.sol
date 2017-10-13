@@ -172,7 +172,7 @@ contract Campaign is Claimable, HasNoTokens, ReentrancyGuard {
     atStage(Stage.Init)
     {
         assert(fundingGoal > 0);
-        require(_distributionRecipients.length == _distributionAmounts.length);
+
         token = new Token(
             _tokenName,
             _tokenSymbol,

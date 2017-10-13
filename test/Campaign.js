@@ -489,27 +489,6 @@ contract('Campaign', function (accounts) {
                     });
             });
         });
-
-        it('should require the distribution recipient and amount arrays to have equal lengths', function () {
-            return createCampaign().then(function (campaign) {
-                return setCampaignParams(campaign)
-                    .then(function () {
-                        return campaign.createToken(
-                            'Confideal Token',
-                            'CDL',
-                            18,
-                            [accounts[0], accounts[1]],
-                            [1, 2, 3]
-                        )
-                            .then(function () {
-                                return Promise.reject('This call should fail');
-                            })
-                            .catch(function (error) {
-                                assert.notEqual(error.toString(), 'This call should fail');
-                            });
-                    });
-            });
-        });
     });
 
     describe('contribution', function () {
