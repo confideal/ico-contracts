@@ -248,7 +248,7 @@ contract Campaign is Claimable, HasNoTokens, ReentrancyGuard {
         // We don’t want more than the funding goal
         require(amountRaised <= fundingGoal);
 
-        token.mint(msg.sender, _tokensAmount);
+        require(token.mint(msg.sender, _tokensAmount));
 
         Contribution(msg.sender, msg.value);
 
