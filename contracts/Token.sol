@@ -6,7 +6,7 @@ import "zeppelin-solidity/contracts/ownership/NoOwner.sol";
 
 
 contract Token is MintableToken, NoOwner {
-    string public version = "1.0.0";
+    string constant public version = "1.0.0";
 
     string public name;
 
