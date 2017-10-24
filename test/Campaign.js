@@ -489,6 +489,67 @@ contract('Campaign', function (accounts) {
                     });
             });
         });
+
+        describe('minimal contribution', () => {
+            it('should be limited by the token price', function () {
+                return createCampaign().then(campaign => {
+                    const blockNumber = currentBlock() + 1;
+                    return campaign.setParams(
+                        [Campaign.web3.toWei(10), Campaign.web3.toWei(100), Campaign.web3.toWei(3),
+                            blockNumber + 1, blockNumber + 1000],
+                        [TIME_MODE_BLOCK, BONUS_MODE_FLAT],
+                        [],
+                        []
+                    )
+                        .then(function () {
+                            return createToken(campaign);
+                        })
+                        .then(() => campaign.minContribution.call())
+                        .then(minContribution => assert.equal(minContribution.toString(), '3'));
+                });
+            });
+
+            it('should be limited by the token decimals count', function () {
+                return createCampaign().then(campaign => {
+                    const blockNumber = currentBlock() + 1;
+                    return campaign.setParams(
+                        [Campaign.web3.toWei(10), Campaign.web3.toWei(100), Campaign.web3.toWei(0.3),
+                            blockNumber + 1, blockNumber + 1000],
+                        [TIME_MODE_BLOCK, BONUS_MODE_FLAT],
+                        [],
+                        []
+                    )
+                        .then(() => campaign.createToken(
+                            'Confideal Token',
+                            'CDL',
+                            15,
+                            [accounts[0], accounts[1]],
+                            [1, 2],
+                            [0, 1]
+                        ))
+                        .then(() => campaign.minContribution.call())
+                        .then(minContribution => assert.equal(minContribution.toString(), '300'));
+                });
+            });
+
+            it('should be at least 1 wei', function () {
+                return createCampaign().then(campaign => {
+                    const blockNumber = currentBlock() + 1;
+                    return campaign.setParams(
+                        [Campaign.web3.toWei(10), Campaign.web3.toWei(100), Campaign.web3.toWei(0.3),
+                            blockNumber + 1, blockNumber + 1000],
+                        [TIME_MODE_BLOCK, BONUS_MODE_FLAT],
+                        [],
+                        []
+                    )
+                        .then(function () {
+                            return createToken(campaign);
+                        })
+                        .then(() => campaign.minContribution.call())
+                        .then(minContribution => assert.equal(minContribution.toString(), '1'));
+                });
+            });
+        });
     });
 
     describe('contribution', function () {
@@ -633,11 +694,11 @@ contract('Campaign', function (accounts) {
             });
         });
 
-        it('shouldn’t allow to contribute 0', function () {
+        it('shouldn’t allow to contribute less than the minimal contribution amount', function () {
             return createCampaign().then(function (campaign) {
                 const blockNumber = currentBlock() + 1;
                 return campaign.setParams(
-                    [Campaign.web3.toWei(10), Campaign.web3.toWei(100), Campaign.web3.toWei(0.3),
+                    [Campaign.web3.toWei(10), Campaign.web3.toWei(100), Campaign.web3.toWei(3),
                         blockNumber + 1, blockNumber + 1000],
                     [TIME_MODE_BLOCK, BONUS_MODE_FLAT],
                     [],
@@ -646,11 +707,13 @@ contract('Campaign', function (accounts) {
                     .then(function () {
                         return createToken(campaign);
                     })
+                    .then(() => campaign.minContribution.call())
+                    .then(minContribution => assert.equal(minContribution.toString(), '3'))
                     .then(function () {
                         return campaign.sendTransaction({
                             from: accounts[5],
                             to: campaign.address,
-                            value: 0,
+                            value: 2,
                             gas: GAS_CONTRIBUTION
                         })
                             .then(function () {

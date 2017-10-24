@@ -51,11 +51,13 @@ contract Campaign is Claimable, HasNoTokens, ReentrancyGuard {
 
     uint256[] public bonusLevels;
 
-    uint256[] public bonusRates; // coefficients in wei
+    uint256[] public bonusRates; // coefficients in ether
 
     address public beneficiary;
 
     uint256 public amountRaised;
+
+    uint256 public minContribution;
 
     uint256 public earlySuccessTimestamp;
 
@@ -184,6 +186,11 @@ contract Campaign is Claimable, HasNoTokens, ReentrancyGuard {
             _releaseTimes,
             uint8(timeMode)
         );
+
+        minContribution = tokenPrice.div(10 ** uint256(token.decimals()));
+        if (minContribution < 1 wei) {
+            minContribution = 1 wei;
+        }
     }
 
     function()
@@ -191,7 +198,7 @@ contract Campaign is Claimable, HasNoTokens, ReentrancyGuard {
     payable
     atStage(Stage.InProgress)
     {
-        require(msg.value > 0);
+        require(minContribution <= msg.value);
 
         contributions[msg.sender] = contributions[msg.sender].add(msg.value);
 

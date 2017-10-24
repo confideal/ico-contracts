@@ -80,6 +80,7 @@ contract Token is MintableToken, NoOwner {
     // Checks if funds of a given address are time-locked
     function timeLocked(address _spender)
     public
+    constant
     returns (bool)
     {
         if (releaseTimes[_spender] == 0) {
