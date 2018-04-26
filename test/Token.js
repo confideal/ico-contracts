@@ -1,7 +1,15 @@
+const chai = require('chai');
+const chaiAsPromised = require('chai-as-promised');
+chai.use(chaiAsPromised);
+const expect = chai.expect;
+
+const txStatus = require('./helpers/txStatus');
+
 const Token = artifacts.require('Token');
 
 const TIME_MODE_BLOCK = 0;
 const TIME_MODE_TIMESTAMP = 1;
+
 
 contract('Token', function (accounts) {
     const currentTimestamp = () => Math.floor(new Date / 1000);
@@ -30,7 +38,7 @@ contract('Token', function (accounts) {
     });
 
     it('should require the distribution recipient and amount arrays to have equal lengths', function () {
-        return Token.new(
+        return expect(Token.new(
             'Confideal Token',
             'CDL',
             18,
@@ -38,13 +46,11 @@ contract('Token', function (accounts) {
             [1, 2, 3],
             [1, 2],
             TIME_MODE_BLOCK
-        )
-            .then(() => Promise.reject('This call should fail'))
-            .catch(error => assert.notEqual(error.toString(), 'This call should fail'));
+        )).to.be.rejected;
     });
 
     it('should require the distribution recipient and release time arrays to have equal lengths', function () {
-        return Token.new(
+        return expect(Token.new(
             'Confideal Token',
             'CDL',
             18,
@@ -52,22 +58,15 @@ contract('Token', function (accounts) {
             [1, 2],
             [1, 2, 3],
             TIME_MODE_BLOCK
-        )
-            .then(() => Promise.reject('This call should fail'))
-            .catch(error => assert.notEqual(error.toString(), 'This call should fail'));
+        )).to.be.rejected;
     });
 
     it('shouldn’t allow transfers while minting', () => {
         return createToken().then(token => Promise.all([
             token.mintingFinished.call().then(mintingFinished => assert.equal(mintingFinished, false)),
-            token.transfer(accounts[2], 1)
-                .then(() => Promise.reject('This call should fail'))
-                .catch(error => assert.notEqual(error.toString(), 'This call should fail')),
+            token.transfer(accounts[2], 1).catch(txStatus.fail),
             token.approve(accounts[0], 1, {from: accounts[1]})
-                .then(() => token.transferFrom(accounts[1], accounts[2], 1)
-                    .then(() => Promise.reject('This call should fail'))
-                    .catch(error => assert.notEqual(error.toString(), 'This call should fail')),
-                )
+                .then(() => token.transferFrom(accounts[1], accounts[2], 1)).catch(txStatus.fail),
         ]));
     });
 
@@ -86,14 +85,9 @@ contract('Token', function (accounts) {
         it('shouldn’t allow transfers from time-locked accounts before release time', () => {
             return createToken().then(token => {
                 return token.finishMinting().then(() => Promise.all([
-                    token.transfer(accounts[0], 1, {from: accounts[2]})
-                        .then(() => Promise.reject('This call should fail'))
-                        .catch(error => assert.notEqual(error.toString(), 'This call should fail')),
+                    token.transfer(accounts[0], 1, {from: accounts[2]}).catch(txStatus.fail),
                     token.approve(accounts[0], 1, {from: accounts[2]})
-                        .then(() => token.transferFrom(accounts[2], accounts[1], 1)
-                            .then(() => Promise.reject('This call should fail'))
-                            .catch(error => assert.notEqual(error.toString(), 'This call should fail')),
-                        )
+                        .then(() => token.transferFrom(accounts[2], accounts[1], 1).catch(txStatus.fail)),
                 ]));
             });
         });
@@ -130,14 +124,9 @@ contract('Token', function (accounts) {
                 TIME_MODE_TIMESTAMP
             ).then(token => {
                 return token.finishMinting().then(() => Promise.all([
-                    token.transfer(accounts[0], 1, {from: accounts[2]})
-                        .then(() => Promise.reject('This call should fail'))
-                        .catch(error => assert.notEqual(error.toString(), 'This call should fail')),
+                    token.transfer(accounts[0], 1, {from: accounts[2]}).catch(txStatus.fail),
                     token.approve(accounts[0], 1, {from: accounts[2]})
-                        .then(() => token.transferFrom(accounts[2], accounts[1], 1)
-                            .then(() => Promise.reject('This call should fail'))
-                            .catch(error => assert.notEqual(error.toString(), 'This call should fail')),
-                        )
+                        .then(() => token.transferFrom(accounts[2], accounts[1], 1).catch(txStatus.fail)),
                 ]));
             });
         });

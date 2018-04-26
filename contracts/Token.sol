@@ -1,7 +1,7 @@
-pragma solidity 0.4.15;
+pragma solidity 0.4.23;
 
 
-import "zeppelin-solidity/contracts/token/MintableToken.sol";
+import "zeppelin-solidity/contracts/token/ERC20/MintableToken.sol";
 import "zeppelin-solidity/contracts/ownership/NoOwner.sol";
 
 
@@ -21,37 +21,37 @@ contract Token is MintableToken, NoOwner {
 
     TimeMode public timeMode;
 
-    mapping (address => uint256) public releaseTimes;
+    mapping(address => uint256) public releaseTimes;
 
     function Token(
-        string _name,
-        string _symbol,
-        uint8 _decimals,
-        address[] _recipients,
-        uint256[] _amounts,
-        uint256[] _releaseTimes,
-        uint8 _timeMode
+        string name_,
+        string symbol_,
+        uint8 decimals_,
+        address[] recipients_,
+        uint256[] amounts_,
+        uint256[] releaseTimes_,
+        uint8 timeMode_
     )
     public
     {
-        require(_recipients.length == _amounts.length);
-        require(_recipients.length == _releaseTimes.length);
+        require(recipients_.length == amounts_.length);
+        require(recipients_.length == releaseTimes_.length);
 
-        name = _name;
-        symbol = _symbol;
-        decimals = _decimals;
-        timeMode = TimeMode(_timeMode);
+        name = name_;
+        symbol = symbol_;
+        decimals = decimals_;
+        timeMode = TimeMode(timeMode_);
 
         // Mint pre-distributed tokens
-        for (uint256 i = 0; i < _recipients.length; i++) {
-            mint(_recipients[i], _amounts[i]);
-            if (_releaseTimes[i] > 0) {
-                releaseTimes[_recipients[i]] = _releaseTimes[i];
+        for (uint8 i = 0; i < recipients_.length; i++) {
+            mint(recipients_[i], amounts_[i]);
+            if (releaseTimes_[i] > 0) {
+                releaseTimes[recipients_[i]] = releaseTimes_[i];
             }
         }
     }
 
-    function transfer(address _to, uint256 _value)
+    function transfer(address to, uint256 value)
     public
     returns (bool)
     {
@@ -61,10 +61,10 @@ contract Token is MintableToken, NoOwner {
         // Transfer of time-locked funds is forbidden
         require(!timeLocked(msg.sender));
 
-        return super.transfer(_to, _value);
+        return super.transfer(to, value);
     }
 
-    function transferFrom(address _from, address _to, uint256 _value)
+    function transferFrom(address from, address to, uint256 value)
     public
     returns (bool)
     {
@@ -72,25 +72,24 @@ contract Token is MintableToken, NoOwner {
         require(mintingFinished);
 
         // Transfer of time-locked funds is forbidden
-        require(!timeLocked(_from));
+        require(!timeLocked(from));
 
-        return super.transferFrom(_from, _to, _value);
+        return super.transferFrom(from, to, value);
     }
 
     // Checks if funds of a given address are time-locked
-    function timeLocked(address _spender)
+    function timeLocked(address spender)
     public
-    constant
     returns (bool)
     {
-        if (releaseTimes[_spender] == 0) {
+        if (releaseTimes[spender] == 0) {
             return false;
         }
 
         // If time-lock is expired, delete it
-        var _time = timeMode == TimeMode.Timestamp ? block.timestamp : block.number;
-        if (releaseTimes[_spender] <= _time) {
-            delete releaseTimes[_spender];
+        var time = timeMode == TimeMode.Timestamp ? block.timestamp : block.number;
+        if (releaseTimes[spender] <= time) {
+            delete releaseTimes[spender];
             return false;
         }
 

@@ -1,308 +1,270 @@
-pragma solidity 0.4.15;
+pragma solidity 0.4.23;
 
-
-import "zeppelin-solidity/contracts/ownership/Claimable.sol";
-import "zeppelin-solidity/contracts/ownership/HasNoTokens.sol";
-import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "zeppelin-solidity/contracts/ReentrancyGuard.sol";
 
-import "./Token.sol";
+import "./CampaignLib.sol";
 
-
-contract Campaign is Claimable, HasNoTokens, ReentrancyGuard {
-    using SafeMath for uint256;
+contract Campaign is ReentrancyGuard {
+    using CampaignLib for CampaignLib.CampaignData;
 
     string constant public version = "1.0.0";
 
-    string public id;
-
-    string public name;
-
-    string public website;
-
-    bytes32 public whitePaperHash;
-
-    uint256 public fundingThreshold;
-
-    uint256 public fundingGoal;
-
-    uint256 public tokenPrice;
-
-    enum TimeMode {
-        Block,
-        Timestamp
-    }
-
-    TimeMode public timeMode;
-
-    uint256 public startTime;
-
-    uint256 public finishTime;
-
-    enum BonusMode {
-        Flat,
-        Block,
-        Timestamp,
-        AmountRaised,
-        ContributionAmount
-    }
-
-    BonusMode public bonusMode;
-
-    uint256[] public bonusLevels;
-
-    uint256[] public bonusRates; // coefficients in ether
-
-    address public beneficiary;
-
-    uint256 public amountRaised;
-
-    uint256 public minContribution;
-
-    uint256 public earlySuccessTimestamp;
-
-    uint256 public earlySuccessBlock;
-
-    mapping (address => uint256) public contributions;
-
-    Token public token;
-
-    enum Stage {
-        Init,
-        Ready,
-        InProgress,
-        Failure,
-        Success
-    }
-
-    function stage()
-    public
-    constant
-    returns (Stage)
-    {
-        if (token == address(0)) {
-            return Stage.Init;
-        }
-
-        var _time = timeMode == TimeMode.Timestamp ? block.timestamp : block.number;
-
-        if (_time < startTime) {
-            return Stage.Ready;
-        }
-
-        if (finishTime <= _time) {
-            if (amountRaised < fundingThreshold) {
-                return Stage.Failure;
-            }
-            return Stage.Success;
-        }
-
-        if (fundingGoal <= amountRaised) {
-            return Stage.Success;
-        }
-
-        return Stage.InProgress;
-    }
-
-    modifier atStage(Stage _stage) {
-        require(stage() == _stage);
-        _;
-    }
-
-    event Contribution(address sender, uint256 amount);
-
-    event Refund(address recipient, uint256 amount);
-
-    event Payout(address recipient, uint256 amount);
-
-    event EarlySuccess();
+    CampaignLib.CampaignData private data;
 
     function Campaign(
-        string _id,
-        address _beneficiary,
-        string _name,
-        string _website,
-        bytes32 _whitePaperHash
+        string id,
+        address beneficiary,
+        string name,
+        string website,
+        bytes32 whitePaperHash,
+        uint256[] fundingThreshold_fundingGoal_tokenPrice_startTime_finishTime_timeMode_bonusMode,
+        uint256[] bonusLevels,
+        uint256[] bonusRates
     )
     public
     {
-        id = _id;
-        beneficiary = _beneficiary;
-        name = _name;
-        website = _website;
-        whitePaperHash = _whitePaperHash;
+        CampaignLib.CampaignParams memory params = CampaignLib.CampaignParams(
+            id,
+            beneficiary,
+            name,
+            website,
+            whitePaperHash,
+            fundingThreshold_fundingGoal_tokenPrice_startTime_finishTime_timeMode_bonusMode[0],
+            fundingThreshold_fundingGoal_tokenPrice_startTime_finishTime_timeMode_bonusMode[1],
+            fundingThreshold_fundingGoal_tokenPrice_startTime_finishTime_timeMode_bonusMode[2],
+            fundingThreshold_fundingGoal_tokenPrice_startTime_finishTime_timeMode_bonusMode[3],
+            fundingThreshold_fundingGoal_tokenPrice_startTime_finishTime_timeMode_bonusMode[4],
+            CampaignLib.TimeMode(fundingThreshold_fundingGoal_tokenPrice_startTime_finishTime_timeMode_bonusMode[5]),
+            CampaignLib.BonusMode(fundingThreshold_fundingGoal_tokenPrice_startTime_finishTime_timeMode_bonusMode[6]),
+            bonusLevels,
+            bonusRates
+        );
+        data.init(params);
     }
 
-    function setParams(
-        // Params are combined to the array to avoid the “Stack too deep” error
-        uint256[] _fundingThreshold_fundingGoal_tokenPrice_startTime_finishTime,
-        uint8[] _timeMode_bonusMode,
-        uint256[] _bonusLevels,
-        uint256[] _bonusRates
+    function setBilling(
+        address billing,
+        string promoCode
     )
-    public
-    onlyOwner
-    atStage(Stage.Init)
+    external
+    payable
     {
-        assert(fundingGoal == 0);
-
-        fundingThreshold = _fundingThreshold_fundingGoal_tokenPrice_startTime_finishTime[0];
-        fundingGoal = _fundingThreshold_fundingGoal_tokenPrice_startTime_finishTime[1];
-        tokenPrice = _fundingThreshold_fundingGoal_tokenPrice_startTime_finishTime[2];
-        timeMode = TimeMode(_timeMode_bonusMode[0]);
-        startTime = _fundingThreshold_fundingGoal_tokenPrice_startTime_finishTime[3];
-        finishTime = _fundingThreshold_fundingGoal_tokenPrice_startTime_finishTime[4];
-        bonusMode = BonusMode(_timeMode_bonusMode[1]);
-        bonusLevels = _bonusLevels;
-        bonusRates = _bonusRates;
-
-        require(fundingThreshold > 0);
-        require(fundingThreshold <= fundingGoal);
-        require(startTime < finishTime);
-        require((timeMode == TimeMode.Block ? block.number : block.timestamp) < startTime);
-        require(bonusLevels.length == bonusRates.length);
+        data.setBilling(billing, promoCode);
     }
 
     function createToken(
-        string _tokenName,
-        string _tokenSymbol,
-        uint8 _tokenDecimals,
-        address[] _distributionRecipients,
-        uint256[] _distributionAmounts,
-        uint256[] _releaseTimes
+        string tokenName,
+        string tokenSymbol,
+        uint8 tokenDecimals,
+        address[] distributionRecipients,
+        uint256[] distributionAmounts,
+        uint256[] releaseTimes
     )
-    public
-    onlyOwner
-    atStage(Stage.Init)
+    external
     {
-        assert(fundingGoal > 0);
-
-        token = new Token(
-            _tokenName,
-            _tokenSymbol,
-            _tokenDecimals,
-            _distributionRecipients,
-            _distributionAmounts,
-            _releaseTimes,
-            uint8(timeMode)
+        data.createToken(
+            tokenName,
+            tokenSymbol,
+            tokenDecimals,
+            distributionRecipients,
+            distributionAmounts,
+            releaseTimes
         );
-
-        minContribution = tokenPrice.div(10 ** uint256(token.decimals()));
-        if (minContribution < 1 wei) {
-            minContribution = 1 wei;
-        }
     }
 
     function()
-    public
+    external
     payable
-    atStage(Stage.InProgress)
     {
-        require(minContribution <= msg.value);
-
-        contributions[msg.sender] = contributions[msg.sender].add(msg.value);
-
-        // Calculate bonus
-        uint256 _level;
-        uint256 _tokensAmount;
-        uint i;
-        if (bonusMode == BonusMode.AmountRaised) {
-            _level = amountRaised;
-            uint256 _value = msg.value;
-            uint256 _weightedRateSum = 0;
-            uint256 _stepAmount;
-            for (i = 0; i < bonusLevels.length; i++) {
-                if (_level <= bonusLevels[i]) {
-                    _stepAmount = bonusLevels[i].sub(_level);
-                    if (_value <= _stepAmount) {
-                        _level = _level.add(_value);
-                        _weightedRateSum = _weightedRateSum.add(_value.mul(bonusRates[i]));
-                        _value = 0;
-                        break;
-                    } else {
-                        _level = _level.add(_stepAmount);
-                        _weightedRateSum = _weightedRateSum.add(_stepAmount.mul(bonusRates[i]));
-                        _value = _value.sub(_stepAmount);
-                    }
-                }
-            }
-            _weightedRateSum = _weightedRateSum.add(_value.mul(1 ether));
-
-            _tokensAmount = _weightedRateSum.div(1 ether).mul(10 ** uint256(token.decimals())).div(tokenPrice);
-        } else {
-            _tokensAmount = msg.value.mul(10 ** uint256(token.decimals())).div(tokenPrice);
-
-            if (bonusMode == BonusMode.Block) {
-                _level = block.number;
-            }
-            if (bonusMode == BonusMode.Timestamp) {
-                _level = block.timestamp;
-            }
-            if (bonusMode == BonusMode.ContributionAmount) {
-                _level = msg.value;
-            }
-
-            for (i = 0; i < bonusLevels.length; i++) {
-                if (_level <= bonusLevels[i]) {
-                    _tokensAmount = _tokensAmount.mul(bonusRates[i]).div(1 ether);
-                    break;
-                }
-            }
-        }
-
-        amountRaised = amountRaised.add(msg.value);
-
-        // We don’t want more than the funding goal
-        require(amountRaised <= fundingGoal);
-
-        require(token.mint(msg.sender, _tokensAmount));
-
-        Contribution(msg.sender, msg.value);
-
-        if (fundingGoal <= amountRaised) {
-            earlySuccessTimestamp = block.timestamp;
-            earlySuccessBlock = block.number;
-            token.finishMinting();
-            EarlySuccess();
-        }
+        data.contribute();
     }
 
     function withdrawPayout()
-    public
-    atStage(Stage.Success)
+    external
+    nonReentrant
     {
-        require(msg.sender == beneficiary);
-
-        if (!token.mintingFinished()) {
-            token.finishMinting();
-        }
-
-        var _amount = this.balance;
-        require(beneficiary.call.value(_amount)());
-        Payout(beneficiary, _amount);
+        data.withdrawPayout();
     }
 
     // Anyone can make tokens available when the campaign is successful
     function releaseTokens()
-    public
-    atStage(Stage.Success)
+    external
     {
-        require(!token.mintingFinished());
-        token.finishMinting();
+        data.releaseTokens();
     }
 
     function withdrawRefund()
-    public
-    atStage(Stage.Failure)
+    external
     nonReentrant
     {
-        var _amount = contributions[msg.sender];
+        data.withdrawRefund();
+    }
 
-        require(_amount > 0);
+    function token()
+    external
+    view
+    returns (address)
+    {
+        return data.token;
+    }
 
-        contributions[msg.sender] = 0;
+    function stage()
+    external
+    view
+    returns (uint8)
+    {
+        return uint8(data.stage());
+    }
 
-        msg.sender.transfer(_amount);
-        Refund(msg.sender, _amount);
+    function id()
+    external
+    view
+    returns (string)
+    {
+        return data.params.id;
+    }
+
+    function beneficiary()
+    external
+    view
+    returns (address)
+    {
+        return data.params.beneficiary;
+    }
+
+    function name()
+    external
+    view
+    returns (string)
+    {
+        return data.params.name;
+    }
+
+    function website()
+    external
+    view
+    returns (string)
+    {
+        return data.params.website;
+    }
+
+    function whitePaperHash()
+    external
+    view
+    returns (bytes32)
+    {
+        return data.params.whitePaperHash;
+    }
+
+    function fundingThreshold()
+    external
+    view
+    returns (uint256)
+    {
+        return data.params.fundingThreshold;
+    }
+
+    function fundingGoal()
+    external
+    view
+    returns (uint256)
+    {
+        return data.params.fundingGoal;
+    }
+
+    function tokenPrice()
+    external
+    view
+    returns (uint256)
+    {
+        return data.params.tokenPrice;
+    }
+
+    function timeMode()
+    external
+    view
+    returns (uint8)
+    {
+        return uint8(data.params.timeMode);
+    }
+
+    function startTime()
+    external
+    view
+    returns (uint256)
+    {
+        return data.params.startTime;
+    }
+
+    function finishTime()
+    external
+    view
+    returns (uint256)
+    {
+        return data.params.finishTime;
+    }
+
+    function bonusMode()
+    external
+    view
+    returns (uint8)
+    {
+        return uint8(data.params.bonusMode);
+    }
+
+    function bonusLevels(uint8 index)
+    external
+    view
+    returns (uint256)
+    {
+        return data.params.bonusLevels[index];
+    }
+
+    function bonusRates(uint8 index)
+    external
+    view
+    returns (uint256)
+    {
+        return data.params.bonusRates[index];
+    }
+
+    function amountRaised()
+    external
+    view
+    returns (uint256)
+    {
+        return data.amountRaised;
+    }
+
+    function minContribution()
+    external
+    view
+    returns (uint256)
+    {
+        return data.minContribution;
+    }
+
+    function earlySuccessTimestamp()
+    external
+    view
+    returns (uint256)
+    {
+        return data.earlySuccessTimestamp;
+    }
+
+    function earlySuccessBlock()
+    external
+    view
+    returns (uint256)
+    {
+        return data.earlySuccessBlock;
+    }
+
+    function contributions(address from)
+    external
+    view
+    returns (uint256)
+    {
+        return data.contributions[from];
     }
 }

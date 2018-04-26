@@ -1,5 +1,5 @@
-Confideal ICO Smart Contracts
-=============================
+Tokenizer by Confideal, Smart Contracts
+=======================================
 
 ### Running tests
 
@@ -8,14 +8,19 @@ Install dependencies:
 npm i
 ```
 
-Run testrpc:
+Run ganache:
 ```
-npm run testrpc
+npm run ganache
 ```
 
-While testrpc is running, run tests:
+While ganache is running, run tests:
 ```
 npm test
 ```
 
-*Due to use of testrpc’s `evm_increaseTime`, you should restart testrpc after each run of tests.*
+*Due to use of ganache’s `evm_increaseTime`, you should restart ganache after each run of tests.*
+
+
+---
+
+© 2017–2018 Confideal Limited. All rights reserved.

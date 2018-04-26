@@ -1,16 +1,19 @@
 {
-  "name": "confideal-ico-contracts",
+  "name": "tokenizer-smart-contracts",
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "zeppelin-solidity": "^1.3.0"
+    "zeppelin-solidity": "^1.6.0"
   },
   "devDependencies": {
-    "ethereumjs-testrpc": "^3.0.3",
-    "truffle-core": "^3.4.11"
+    "chai": "^4.1.2",
+    "chai-as-promised": "^7.1.1",
+    "ethjs-abi": "0.1.8",
+    "ganache-cli": "^7.0.0-beta.0",
+    "truffle-core": "^4.0.6"
   },
   "scripts": {
-    "testrpc": "testrpc -i 88 -p 8888",
+    "ganache": "ganache-cli -i 42 -p 8888",
     "test": "truffle test"
   }
 }
